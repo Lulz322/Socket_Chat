@@ -24,6 +24,7 @@ public:
 	void log_in_client(int sock);
 	void add_client(std::string name, std::string pass);
 
+	void welcome_window(int connfd);
 	void check_people();
 	void start_server();
 

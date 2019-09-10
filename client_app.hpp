@@ -19,6 +19,7 @@ public:
 	~Client_app();
 
 	void start_app();
+	void welcome_window();
 	void register_window();
 	void log_in();
 	void main_menu();

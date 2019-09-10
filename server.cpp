@@ -10,6 +10,8 @@
 #define MAX 80
 #define PORT 8080
 
+#define READ(fd, buff, size) {if (read(fd, buff,size) == 0) {std::cout << "Lost connection w/ user\n"; close(fd);return ;}}
+
 Users::Users() {}
 Users::Users(std::string name, int socket) : id(socket), _name(name)
 {
@@ -21,7 +23,7 @@ Users::~Users() { }
 Server::Server() {
 	check = false;
 	FD_ZERO(&readfds);
-
+	connected.clear();
 	a_users = 0;
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd == -1) {
@@ -87,7 +89,6 @@ int log_in(std::string name, std::string pass)
 
 	if (in.is_open())
 	{
-
 		while (getline(in, line))
 		{
 			i = -1;
@@ -103,7 +104,7 @@ int log_in(std::string name, std::string pass)
 }
 
 
-
+//Adding client to "db" :D
 void Server::add_client(std::string name, std::string pass)
 {
 	std::ofstream out;
@@ -121,15 +122,27 @@ void Server::log_in_client(int sock)
 	while (1)
 	{
 		write(sock, "Login:\n", sizeof("Login:\n"));
-		read(sock, buff, sizeof(buff));
+		READ(sock, buff, 1024);
 		name = buff;
 		bzero(buff, 1024);
 		write(sock, "Password:\n", sizeof("Password:\n"));
-		read(sock, buff, sizeof(buff));
+		READ(sock, buff, 1024);
 		pass = buff;
 		if (log_in(name, pass))
 		{
+			write(sock, "[1]\n",sizeof("[1]\n"));
 
+			for (std::vector<Users *>::iterator it = connected.begin();
+			 it != connected.end(); ++it) { // Looking if someone in system w/ that nickname
+				if ((*it)->_name == name)
+				{
+					write(sock, "[0]\n",sizeof("[0]\n"));
+					std::cout << sock << " has been kicked, for duplicate" << std::endl;
+					close(sock);
+					return ;
+				}
+			}
+			write(sock, "[1]\n",sizeof("[1]\n"));
 			connected.push_back(new Users(name, sock));
 			FD_SET(sock, &readfds);
 			a_users++;
@@ -138,7 +151,10 @@ void Server::log_in_client(int sock)
 			break;
 		}
 		else
+		{
 			write(sock, "[0]\n",sizeof("[0]\n"));
+			welcome_window(sock);
+		}
 	}
 }
 
@@ -149,28 +165,27 @@ void Server::register_client(int sock){
 	std::string pass;
 	bool success = true;
 
+
 	write(sock, "[1001]", sizeof("[1001]"));
 	while (success)
 	{
 		bzero(buff, sizeof(buff));
 		write(sock, "Login:\n", sizeof("Login:\n"));
-		read(sock, buff, sizeof(buff));
+		READ(sock, buff, 1024);
 		name = buff;
 		if (log_pas(name))
 		{
 			write(sock, "[1]", sizeof("[1]"));
 			bzero(buff, 1024);
 			write(sock, "Password:\n", sizeof("Password:\n"));
-			read(sock, buff, sizeof(buff));
+			READ(sock, buff, 1024);
 			pass = buff;
 			add_client(name, pass);
 			success = false;
 			break;
 		}
 		else
-		{
 			write(sock, "[0]", sizeof("[0]"));
-		}
 	}
 	log_in_client(sock);
 }
@@ -205,12 +220,11 @@ void Server::check_user(Users *user)
 		for (it = connected.begin(); *it != user; ++it) {
 		}
 		connected.erase(it);
-		std::cout << user->_name <<" left this channel\n";
+		std::cout << user->_name <<" left this channel" << std::endl;
 		delete (user);
 		return ;
 	}
 }
-
 
 void Server::start_server()
 {
@@ -252,26 +266,35 @@ void Server::start_server()
 }
 
 
+void Server::welcome_window(int connfd)
+{
+	char buff[1024];
+
+
+	READ(connfd, buff, 1024);
+
+	while (1)
+	{
+		if (buff[0] == '2' && buff[1] == '\0')
+			 { register_client(connfd); break;}
+		else if (buff[0] == '1' && buff[1] == '\0')
+			{ log_in_client(connfd); break;}
+		else
+			write(connfd, "[0]", sizeof("[0]"));
+	}
+}
+
 void Server::check_people()
 {
 	int connfd;
 
 	while (1)
 	{
-		char buff[1024];
+
 		connfd = accept(sockfd, (SA*)&cli, &len);
-		printf("%s [%d]\n", "Someone connected", connfd);
+		std::cout << "Someone connected on [" << connfd << "] fd" << std::endl;
 		write(connfd, "1.For Login\n2.Register\n", sizeof("1.For Login\n2.Register\n"));
-		read(connfd, buff, sizeof(buff));
-		while (1)
-		{
-			if (buff[0] == '2' && buff[1] == '\0')
-				 { register_client(connfd); break;}
-			else if (buff[0] == '1' && buff[1] == '\0')
-				{ log_in_client(connfd); break;}
-			else
-				write(connfd, "[0]", sizeof("[0]"));
-		}
+		welcome_window(connfd);
 		if (connfd < 0) {
 			printf("server acccept failed...\n");
 			exit(0);
@@ -279,29 +302,20 @@ void Server::check_people()
 	}
 }
 
-
 int main()
 {
 
 	Server obs;
-
-
 	std::thread peoples([&]()
 	{
-		obs.check_people();
-		obs.check_people();
+		for (;;)
+		{
+			obs.check_people();
+			obs.check_people();
+		}
 	});
 	peoples.detach();
 
 
-
-
-	std::thread main_func([&]()
-	{
-		obs.start_server();
-	});
-	main_func.join();
-
-
-
+	obs.start_server();
 }

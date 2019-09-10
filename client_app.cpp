@@ -33,11 +33,18 @@ Client_app::~Client_app()
 void Client_app::log_in(){
 	bool success = true;
 
+	std::cout << "Log_in Window\n\n";
 	while (success) {
 		bzero(buff, sizeof(buff));
 		read(sockfd, buff, sizeof(buff));
 		std::cout << buff << std::endl;
 		getline(std::cin, output);
+		if (output == "/back")
+		{
+			write(sockfd, "[10]", 4);
+			start_app();
+		}
+
 		write(sockfd, output.c_str(), sizeof(output.c_str()));
 		bzero(buff, sizeof(buff));
 		read(sockfd, buff, sizeof(buff));
@@ -50,18 +57,32 @@ void Client_app::log_in(){
 		read(sockfd, buff, sizeof(buff));
 		if (atoi(&buff[1]) == 1)
 		{
+			bzero(buff, sizeof(buff));
+			read(sockfd, buff, sizeof(buff));
+			if (atoi(&buff[1]) == 0)
+			{
+				std::cout << "This user already login" << std::endl;
+				exit (EXIT_FAILURE);
+			}
+			bzero(buff, sizeof(buff));
+			read(sockfd, buff, sizeof(buff));
 			system("clear");
 			std::cout << "Successfully logged in\n";
 			success = false;
 		}
 		else
-			std::cout << "Error, Login or Password incorrect\n";
+		{
+			std::cout << "Error, Login or Password111 incorrect\n";
+		 	welcome_window();
+	 }
+
 	}
 	main_menu();
 }
 
 void Client_app::register_window() {
 	bool success = true;
+	std::cout << "Register Window\n\n";
 	while (success)
 	{
 		bzero(buff, sizeof(buff));
@@ -97,7 +118,6 @@ void Client_app::register_window() {
 			write(sockfd, output.c_str(), sizeof(output.c_str()));
 			bzero(buff, sizeof(buff));
 			read(sockfd, buff, sizeof(buff));
-
 			std::cout << "Successfully accout created\n";
 			success = false;
 			break;
@@ -110,11 +130,16 @@ void Client_app::register_window() {
 
 void Client_app::reader()
 {
+	int activity;
+
 	for (;;)
 	{
-		bzero(buff, 1024);
-		read(sockfd, buff, 1024);
-		std::cout << buff << std::endl;
+		while ((activity = read(sockfd , buff, 1024)) != 0)
+		{
+			std::cout << buff << std::endl;
+			bzero(buff, 1024);
+		}
+
 	}
 }
 
@@ -135,6 +160,29 @@ for (;;) {
 	}
 }
 
+void Client_app::welcome_window()
+{
+	char buff[1024];
+	std::cout << "Welcome in App Client\n";
+	while (1) {
+		std::cout  <<	"1. For login\n"
+				   <<	"2. Register account\n";
+
+		getline(std::cin, output);
+		write(sockfd, output.c_str(), output.length());
+		bzero(buff, 1024);
+		read(sockfd, buff, sizeof(buff));
+		if (atoi(&buff[1]) == 1002)
+			log_in();
+		else if (atoi(&buff[1]) == 1001)
+			register_window();
+		else
+		{
+			std::cout << "Error input\n";
+		}
+	}
+}
+
 void Client_app::start_app()
 {
 	bzero(buff, sizeof(buff));
@@ -145,7 +193,11 @@ void Client_app::start_app()
 	write(sockfd, output.c_str(), sizeof(output.c_str()));
 
 	bzero(buff, sizeof(buff));
-	read(sockfd, buff, sizeof(buff));
+	if (read(sockfd, buff, sizeof(buff)) == 0)
+	{
+		std::cout << "Lost connection w/ Server\n";
+		exit(EXIT_FAILURE);
+	}
 	if (atoi(&buff[1]) == 1001)
 		register_window();
 	else if (atoi(&buff[1]) == 1002)
