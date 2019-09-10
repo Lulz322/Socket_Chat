@@ -4,12 +4,11 @@
 #include <thread>
 #include <chrono>
 #include <fcntl.h>
-#include "server.hpp"
-
+#include "../includes/server.hpp"
 
 #define MAX 80
 #define PORT 8080
-
+//also check drop connection
 #define READ(fd, buff, size) {if (read(fd, buff,size) == 0) {std::cout << "Lost connection w/ user\n"; close(fd);return ;}}
 
 Users::Users() {}
@@ -51,7 +50,6 @@ Server::Server() {
 
 	len = sizeof(cli);
 	FD_SET(0, &readfds);
-	a_users++;
 }
 
 Server::~Server(){
@@ -104,7 +102,7 @@ int log_in(std::string name, std::string pass)
 }
 
 
-//Adding client to "db" :D
+//Adding client to "db" :)
 void Server::add_client(std::string name, std::string pass)
 {
 	std::ofstream out;
@@ -117,9 +115,10 @@ void Server::log_in_client(int sock)
 	char buff[1024];
 	std::string name;
 	std::string pass;
+	bool tick = true;
 
-	write(sock, "[1002]", sizeof("[1002]"));
-	while (1)
+	write(sock, "[1002]", sizeof("[1002]")); //ID log_in room on client side
+	while (tick)
 	{
 		write(sock, "Login:\n", sizeof("Login:\n"));
 		READ(sock, buff, 1024);
@@ -128,7 +127,7 @@ void Server::log_in_client(int sock)
 		write(sock, "Password:\n", sizeof("Password:\n"));
 		READ(sock, buff, 1024);
 		pass = buff;
-		if (log_in(name, pass))
+		if (log_in(name, pass)) //checking in db for that info
 		{
 			write(sock, "[1]\n",sizeof("[1]\n"));
 
@@ -143,17 +142,19 @@ void Server::log_in_client(int sock)
 				}
 			}
 			write(sock, "[1]\n",sizeof("[1]\n"));
-			connected.push_back(new Users(name, sock));
+			connected.push_back(new Users(name, sock)); // Adding user to list
 			FD_SET(sock, &readfds);
-			a_users++;
+			a_users++; //number of users
 			check = true;
 			write(sock, "[1]\n",sizeof("[1]\n"));
+			tick = false;
 			break;
 		}
 		else
 		{
 			write(sock, "[0]\n",sizeof("[0]\n"));
 			welcome_window(sock);
+			break;
 		}
 	}
 }
@@ -165,22 +166,21 @@ void Server::register_client(int sock){
 	std::string pass;
 	bool success = true;
 
-
-	write(sock, "[1001]", sizeof("[1001]"));
+	write(sock, "[1001]", sizeof("[1001]")); // ID room in client side
 	while (success)
 	{
 		bzero(buff, sizeof(buff));
 		write(sock, "Login:\n", sizeof("Login:\n"));
 		READ(sock, buff, 1024);
 		name = buff;
-		if (log_pas(name))
+		if (log_pas(name)) //Check for unique name
 		{
 			write(sock, "[1]", sizeof("[1]"));
 			bzero(buff, 1024);
 			write(sock, "Password:\n", sizeof("Password:\n"));
 			READ(sock, buff, 1024);
 			pass = buff;
-			add_client(name, pass);
+			add_client(name, pass); //Creating client
 			success = false;
 			break;
 		}
@@ -190,6 +190,7 @@ void Server::register_client(int sock){
 	log_in_client(sock);
 }
 
+
 void Server::send_to_other(Users *user, std::string str){
 	for (std::vector<Users *>::iterator it = connected.begin();
 	 it != connected.end(); ++it) {
@@ -198,6 +199,7 @@ void Server::send_to_other(Users *user, std::string str){
 	}
 }
 
+//This func checking user activity
 void Server::check_user(Users *user)
 {
 	int activity;
@@ -220,7 +222,10 @@ void Server::check_user(Users *user)
 		for (it = connected.begin(); *it != user; ++it) {
 		}
 		connected.erase(it);
-		std::cout << user->_name <<" left this channel" << std::endl;
+		a_users--;
+		tmp = user->_name + " left this channel";
+		std::cout << tmp << std::endl;
+		send_to_other(0, tmp);
 		delete (user);
 		return ;
 	}
@@ -238,11 +243,11 @@ void Server::start_server()
 
 	for(;;)
 	{
-		if (check == true)
+		if (check == true) // If vector changed list updates and creating thread for new user;
 		{
 			start = connected.begin();
 			end 	= connected.end();
-			std::cout << "users on channel: \n";
+			std::cout << "users on channel ["<< a_users << "]:\n";
 			for (it = start; it != end; ++it)
 			{
 				tmp = *it;
@@ -260,7 +265,7 @@ void Server::start_server()
 		}
 		else
 		{
-
+			//Probobly create one more thread for write in server;
 		}
 	}
 }
@@ -270,11 +275,10 @@ void Server::welcome_window(int connfd)
 {
 	char buff[1024];
 
-
-	READ(connfd, buff, 1024);
-
 	while (1)
 	{
+		bzero(buff, 1024);
+		READ(connfd, buff, 1024);
 		if (buff[0] == '2' && buff[1] == '\0')
 			 { register_client(connfd); break;}
 		else if (buff[0] == '1' && buff[1] == '\0')
@@ -284,13 +288,13 @@ void Server::welcome_window(int connfd)
 	}
 }
 
+//Thread for connecting users;
 void Server::check_people()
 {
 	int connfd;
 
 	while (1)
 	{
-
 		connfd = accept(sockfd, (SA*)&cli, &len);
 		std::cout << "Someone connected on [" << connfd << "] fd" << std::endl;
 		write(connfd, "1.For Login\n2.Register\n", sizeof("1.For Login\n2.Register\n"));
@@ -311,11 +315,18 @@ int main()
 		for (;;)
 		{
 			obs.check_people();
-			obs.check_people();
 		}
 	});
 	peoples.detach();
+	std::thread peoples1([&]() //For comfort
+	{
+		for (;;)
+		{
+			obs.check_people();
+		}
+	});
+	peoples1.detach();
 
 
-	obs.start_server();
+	obs.start_server(); //Main char/room
 }

@@ -1,5 +1,6 @@
-#include "client_app.hpp"
-#include <thread>
+#include "../includes/client_app.hpp"
+//also check drop connection
+#define READ(fd, buff, size) {if (read(sockfd, buff, sizeof(buff)) == 0){std::cout << "Lost connection w/ Server\n";exit(EXIT_FAILURE);}}
 
 Client_app::Client_app()
 {
@@ -36,43 +37,42 @@ void Client_app::log_in(){
 	std::cout << "Log_in Window\n\n";
 	while (success) {
 		bzero(buff, sizeof(buff));
-		read(sockfd, buff, sizeof(buff));
+		READ(sockfd, buff, 1024);
 		std::cout << buff << std::endl;
 		getline(std::cin, output);
-		if (output == "/back")
-		{
-			write(sockfd, "[10]", 4);
-			start_app();
-		}
-
-		write(sockfd, output.c_str(), sizeof(output.c_str()));
-		bzero(buff, sizeof(buff));
-		read(sockfd, buff, sizeof(buff));
-		std::cout << buff << std::endl;
-		getline(std::cin, output);
-		write(sockfd, output.c_str(), sizeof(output.c_str()));
+		write(sockfd, output.c_str(), output.length());
 
 
 		bzero(buff, sizeof(buff));
-		read(sockfd, buff, sizeof(buff));
+		READ(sockfd, buff, 1024);
+		std::cout << buff << std::endl;
+		getline(std::cin, output);
+		write(sockfd, output.c_str(), output.length());
+
+
+		bzero(buff, sizeof(buff));
+		READ(sockfd, buff, 1024);
+
 		if (atoi(&buff[1]) == 1)
 		{
 			bzero(buff, sizeof(buff));
-			read(sockfd, buff, sizeof(buff));
+			READ(sockfd, buff, 1024);
 			if (atoi(&buff[1]) == 0)
 			{
 				std::cout << "This user already login" << std::endl;
+				close(sockfd);
 				exit (EXIT_FAILURE);
 			}
 			bzero(buff, sizeof(buff));
-			read(sockfd, buff, sizeof(buff));
+			READ(sockfd, buff, 1024);
 			system("clear");
 			std::cout << "Successfully logged in\n";
+			std::cout << "CTRL + C for exit\n";
 			success = false;
 		}
 		else
 		{
-			std::cout << "Error, Login or Password111 incorrect\n";
+			std::cout << "Error, Login or Password incorrect\n\n";
 		 	welcome_window();
 	 }
 
@@ -86,7 +86,7 @@ void Client_app::register_window() {
 	while (success)
 	{
 		bzero(buff, sizeof(buff));
-		read(sockfd, buff, sizeof(buff));
+		READ(sockfd, buff, 1024);
 
 		while (1)
 		{
@@ -98,13 +98,13 @@ void Client_app::register_window() {
 				break;
 		}
 
-		write(sockfd, output.c_str(), sizeof(output.c_str()));
+		write(sockfd, output.c_str(), output.length());
 		bzero(buff, sizeof(buff));
-		read(sockfd, buff, sizeof(buff));
+		READ(sockfd, buff, 1024);
 		if (atoi(&buff[1]) == 1)
 		{
 			bzero(buff, sizeof(buff));
-			read(sockfd, buff, sizeof(buff));
+			READ(sockfd, buff, 1024);
 
 			while (1)
 			{
@@ -115,9 +115,9 @@ void Client_app::register_window() {
 				else
 					break;
 			}
-			write(sockfd, output.c_str(), sizeof(output.c_str()));
+			write(sockfd, output.c_str(), output.length());
 			bzero(buff, sizeof(buff));
-			read(sockfd, buff, sizeof(buff));
+			READ(sockfd, buff, 1024);
 			std::cout << "Successfully accout created\n";
 			success = false;
 			break;
@@ -131,7 +131,7 @@ void Client_app::register_window() {
 void Client_app::reader()
 {
 	int activity;
-
+	bzero(buff, 1024);
 	for (;;)
 	{
 		while ((activity = read(sockfd , buff, 1024)) != 0)
@@ -139,7 +139,6 @@ void Client_app::reader()
 			std::cout << buff << std::endl;
 			bzero(buff, 1024);
 		}
-
 	}
 }
 
@@ -152,11 +151,11 @@ void Client_app::main_menu()
 	readers.detach();
 
 for (;;) {
-	while (1)
-	{
-		getline(std::cin, output);
-		write(sockfd, output.c_str(), output.length());
-	}
+		while (1)
+		{
+			getline(std::cin, output);
+			write(sockfd, output.c_str(), output.length());
+		}
 	}
 }
 
@@ -171,37 +170,41 @@ void Client_app::welcome_window()
 		getline(std::cin, output);
 		write(sockfd, output.c_str(), output.length());
 		bzero(buff, 1024);
-		read(sockfd, buff, sizeof(buff));
+		READ(sockfd, buff, 1024);
 		if (atoi(&buff[1]) == 1002)
 			log_in();
 		else if (atoi(&buff[1]) == 1001)
 			register_window();
 		else
-		{
 			std::cout << "Error input\n";
-		}
 	}
 }
 
 void Client_app::start_app()
 {
 	bzero(buff, sizeof(buff));
-	read(sockfd, buff, sizeof(buff));
+	READ(sockfd, buff, 1024);
 	std::cout << buff;
-
-	getline(std::cin, output);
-	write(sockfd, output.c_str(), sizeof(output.c_str()));
-
-	bzero(buff, sizeof(buff));
-	if (read(sockfd, buff, sizeof(buff)) == 0)
+	
+	while (1)
 	{
-		std::cout << "Lost connection w/ Server\n";
-		exit(EXIT_FAILURE);
+		getline(std::cin, output);
+		write(sockfd, output.c_str(), output.length());
+
+		bzero(buff, sizeof(buff));
+		READ(sockfd, buff, 1024);
+		if (atoi(&buff[1]) == 1001)
+			register_window();
+		else if (atoi(&buff[1]) == 1002)
+			log_in();
+		else
+			std::cout << "error input\n";
 	}
-	if (atoi(&buff[1]) == 1001)
-		register_window();
-	else if (atoi(&buff[1]) == 1002)
-		log_in();
-	else
-		std::cout << "error\n";
+}
+//best main ever;
+int main(void)
+{
+	Client_app app;
+
+	app.start_app();
 }
