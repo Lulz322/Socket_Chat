@@ -61,7 +61,7 @@ int log_pas(std::string str)
 	std::ifstream in("db");
 	std::string tmp;
 	int i;
-
+	
 	if (in.is_open())
 	{
 		while (getline(in, line))
@@ -120,13 +120,16 @@ void Server::log_in_client(int sock)
 	write(sock, "[1002]", sizeof("[1002]")); //ID log_in room on client side
 	while (tick)
 	{
-		write(sock, "Login:\n", sizeof("Login:\n"));
+		bzero(buff, 1024);
 		READ(sock, buff, 1024);
 		name = buff;
+
+
 		bzero(buff, 1024);
-		write(sock, "Password:\n", sizeof("Password:\n"));
 		READ(sock, buff, 1024);
 		pass = buff;
+
+
 		if (log_in(name, pass)) //checking in db for that info
 		{
 			write(sock, "[1]\n",sizeof("[1]\n"));
@@ -169,15 +172,14 @@ void Server::register_client(int sock){
 	write(sock, "[1001]", sizeof("[1001]")); // ID room in client side
 	while (success)
 	{
-		bzero(buff, sizeof(buff));
-		write(sock, "Login:\n", sizeof("Login:\n"));
+		//name
 		READ(sock, buff, 1024);
 		name = buff;
 		if (log_pas(name)) //Check for unique name
 		{
 			write(sock, "[1]", sizeof("[1]"));
-			bzero(buff, 1024);
-			write(sock, "Password:\n", sizeof("Password:\n"));
+
+
 			READ(sock, buff, 1024);
 			pass = buff;
 			add_client(name, pass); //Creating client
@@ -279,12 +281,15 @@ void Server::welcome_window(int connfd)
 	{
 		bzero(buff, 1024);
 		READ(connfd, buff, 1024);
-		if (buff[0] == '2' && buff[1] == '\0')
-			 { register_client(connfd); break;}
-		else if (buff[0] == '1' && buff[1] == '\0')
-			{ log_in_client(connfd); break;}
-		else
-			write(connfd, "[0]", sizeof("[0]"));
+		if (buff[0] != '\0')
+		{
+			if (buff[0] == '2' && buff[1] == '\0')
+				 { register_client(connfd); break;}
+			else if (buff[0] == '1' && buff[1] == '\0')
+				{ log_in_client(connfd); break;}
+			else
+				write(connfd, "[0]", sizeof("[0]"));
+		}
 	}
 }
 

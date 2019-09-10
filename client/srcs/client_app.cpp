@@ -36,17 +36,17 @@ void Client_app::log_in(){
 
 	std::cout << "Log_in Window\n\n";
 	while (success) {
-		bzero(buff, sizeof(buff));
-		READ(sockfd, buff, 1024);
-		std::cout << buff << std::endl;
-		getline(std::cin, output);
+		std::cout << "Login:" << std::endl;
+		output.clear();
+		while (output.empty())
+   			getline(std::cin, output);
 		write(sockfd, output.c_str(), output.length());
 
+		std::cout << "Password:" << std::endl;
 
-		bzero(buff, sizeof(buff));
-		READ(sockfd, buff, 1024);
-		std::cout << buff << std::endl;
-		getline(std::cin, output);
+		output.clear();
+		while (output.empty())
+   			getline(std::cin, output);
 		write(sockfd, output.c_str(), output.length());
 
 
@@ -85,38 +85,35 @@ void Client_app::register_window() {
 	std::cout << "Register Window\n\n";
 	while (success)
 	{
-		bzero(buff, sizeof(buff));
-		READ(sockfd, buff, 1024);
-
 		while (1)
 		{
-			std::cout << buff << std::endl;
-			getline(std::cin, output);
+			std::cout << "Login:" << std::endl;
+	   		getline(std::cin, output);
 			if (output.empty())
 				std::cout << "Name cannot be empty\n";
 			else
 				break;
 		}
-
 		write(sockfd, output.c_str(), output.length());
-		bzero(buff, sizeof(buff));
+		memset(buff, '\0', 1024);
 		READ(sockfd, buff, 1024);
 		if (atoi(&buff[1]) == 1)
 		{
-			bzero(buff, sizeof(buff));
-			READ(sockfd, buff, 1024);
-
+			std::cout << "Password:" << std::endl;
+			memset(buff, '\0', 1024);
 			while (1)
 			{
 				std::cout << buff << std::endl;
-				getline(std::cin, output);
+		   		getline(std::cin, output);
 				if (output.empty())
 					std::cout << "Password cannot be empty\n";
 				else
 					break;
 			}
+
 			write(sockfd, output.c_str(), output.length());
-			bzero(buff, sizeof(buff));
+
+			memset(buff, '\0', 1024);
 			READ(sockfd, buff, 1024);
 			std::cout << "Successfully accout created\n";
 			success = false;
@@ -153,7 +150,9 @@ void Client_app::main_menu()
 for (;;) {
 		while (1)
 		{
-			getline(std::cin, output);
+			output.clear();
+			while (output.empty())
+	   			getline(std::cin, output);
 			write(sockfd, output.c_str(), output.length());
 		}
 	}
@@ -167,7 +166,9 @@ void Client_app::welcome_window()
 		std::cout  <<	"1. For login\n"
 				   <<	"2. Register account\n";
 
-		getline(std::cin, output);
+				   output.clear();
+		   		while (output.empty())
+		      			getline(std::cin, output);
 		write(sockfd, output.c_str(), output.length());
 		bzero(buff, 1024);
 		READ(sockfd, buff, 1024);
@@ -185,10 +186,13 @@ void Client_app::start_app()
 	bzero(buff, sizeof(buff));
 	READ(sockfd, buff, 1024);
 	std::cout << buff;
-	
+
 	while (1)
 	{
-		getline(std::cin, output);
+		output.clear();
+		while (output.empty())
+			getline(std::cin, output);
+
 		write(sockfd, output.c_str(), output.length());
 
 		bzero(buff, sizeof(buff));
