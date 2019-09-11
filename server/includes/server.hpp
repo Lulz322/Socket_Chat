@@ -19,6 +19,7 @@ public:
 	Server();
 	~Server();
 
+	Server&operator=(const Server& rhs);
 
 	void register_client(int sock);
 	void log_in_client(int sock);

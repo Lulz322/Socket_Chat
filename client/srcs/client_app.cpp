@@ -1,7 +1,8 @@
 #include "../includes/client_app.hpp"
+#include <algorithm>
 //also check drop connection
 #define READ(fd, buff, size) {if (read(sockfd, buff, sizeof(buff)) == 0){std::cout << "Lost connection w/ Server\n";exit(EXIT_FAILURE);}}
-
+#define BUFFSIZE 1024
 Client_app::Client_app()
 {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -30,9 +31,16 @@ Client_app::~Client_app()
 	close(sockfd);
 }
 
+Client_app& Client_app::operator=(const Client_app& rhs){
+	if (this == &rhs)
+		return (*this);
+	else
+		return (*(new Client_app()));
+}
 
 void Client_app::log_in(){
 	bool success = true;
+	char buff[BUFFSIZE];
 
 	std::cout << "Log_in Window\n\n";
 	while (success) {
@@ -50,21 +58,21 @@ void Client_app::log_in(){
 		write(sockfd, output.c_str(), output.length());
 
 
-		bzero(buff, sizeof(buff));
-		READ(sockfd, buff, 1024);
+		memset(buff, '\0', BUFFSIZE);
+		READ(sockfd, buff, BUFFSIZE);
 
 		if (atoi(&buff[1]) == 1)
 		{
-			bzero(buff, sizeof(buff));
-			READ(sockfd, buff, 1024);
+			memset(buff, '\0', BUFFSIZE);
+			READ(sockfd, buff, BUFFSIZE);
 			if (atoi(&buff[1]) == 0)
 			{
 				std::cout << "This user already login" << std::endl;
 				close(sockfd);
 				exit (EXIT_FAILURE);
 			}
-			bzero(buff, sizeof(buff));
-			READ(sockfd, buff, 1024);
+			memset(buff, '\0', BUFFSIZE);
+			READ(sockfd, buff, BUFFSIZE);
 			system("clear");
 			std::cout << "Successfully logged in\n";
 			std::cout << "CTRL + C for exit\n";
@@ -82,39 +90,44 @@ void Client_app::log_in(){
 
 void Client_app::register_window() {
 	bool success = true;
+	char buff[BUFFSIZE];
+
 	std::cout << "Register Window\n\n";
 	while (success)
 	{
 		while (1)
 		{
+			output.clear();
 			std::cout << "Login:" << std::endl;
 	   		getline(std::cin, output);
 			if (output.empty())
 				std::cout << "Name cannot be empty\n";
+			else if (std::count(output.begin(), output.end(), ':') != 0)
+				std::cout << "Forbidden characther ':'\n";
 			else
 				break;
 		}
 		write(sockfd, output.c_str(), output.length());
-		memset(buff, '\0', 1024);
-		READ(sockfd, buff, 1024);
+		memset(buff, '\0', BUFFSIZE);
+		READ(sockfd, buff, BUFFSIZE);
 		if (atoi(&buff[1]) == 1)
 		{
 			std::cout << "Password:" << std::endl;
-			memset(buff, '\0', 1024);
+			memset(buff, '\0', BUFFSIZE);
 			while (1)
 			{
 				std::cout << buff << std::endl;
+				output.clear();
 		   		getline(std::cin, output);
 				if (output.empty())
 					std::cout << "Password cannot be empty\n";
 				else
 					break;
 			}
-
 			write(sockfd, output.c_str(), output.length());
 
-			memset(buff, '\0', 1024);
-			READ(sockfd, buff, 1024);
+			memset(buff, '\0', BUFFSIZE);
+			READ(sockfd, buff, BUFFSIZE);
 			std::cout << "Successfully accout created\n";
 			success = false;
 			break;
@@ -128,13 +141,15 @@ void Client_app::register_window() {
 void Client_app::reader()
 {
 	int activity;
-	bzero(buff, 1024);
+	char buff[BUFFSIZE];
+
+	memset(buff, '\0', BUFFSIZE);
 	for (;;)
 	{
-		while ((activity = read(sockfd , buff, 1024)) != 0)
+		while ((activity = read(sockfd , buff, BUFFSIZE)) != 0)
 		{
 			std::cout << buff << std::endl;
-			bzero(buff, 1024);
+			memset(buff, '\0', BUFFSIZE);
 		}
 	}
 }
@@ -160,18 +175,18 @@ for (;;) {
 
 void Client_app::welcome_window()
 {
-	char buff[1024];
+	char buff[BUFFSIZE];
 	std::cout << "Welcome in App Client\n";
 	while (1) {
 		std::cout  <<	"1. For login\n"
 				   <<	"2. Register account\n";
 
-				   output.clear();
-		   		while (output.empty())
-		      			getline(std::cin, output);
+		output.clear();
+		while (output.empty())
+			getline(std::cin, output);
 		write(sockfd, output.c_str(), output.length());
-		bzero(buff, 1024);
-		READ(sockfd, buff, 1024);
+		memset(buff, '\0', BUFFSIZE);
+		READ(sockfd, buff, BUFFSIZE);
 		if (atoi(&buff[1]) == 1002)
 			log_in();
 		else if (atoi(&buff[1]) == 1001)
@@ -183,8 +198,10 @@ void Client_app::welcome_window()
 
 void Client_app::start_app()
 {
-	bzero(buff, sizeof(buff));
-	READ(sockfd, buff, 1024);
+	char buff[BUFFSIZE];
+
+	memset(buff, '\0', BUFFSIZE);
+	READ(sockfd, buff, BUFFSIZE);
 	std::cout << buff;
 
 	while (1)
@@ -195,8 +212,8 @@ void Client_app::start_app()
 
 		write(sockfd, output.c_str(), output.length());
 
-		bzero(buff, sizeof(buff));
-		READ(sockfd, buff, 1024);
+		memset(buff, '\0', BUFFSIZE);
+		READ(sockfd, buff, BUFFSIZE);
 		if (atoi(&buff[1]) == 1001)
 			register_window();
 		else if (atoi(&buff[1]) == 1002)

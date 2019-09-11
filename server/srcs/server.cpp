@@ -6,8 +6,8 @@
 #include <fcntl.h>
 #include "../includes/server.hpp"
 
-#define MAX 80
 #define PORT 8080
+#define BUFFSIZE 1024
 //also check drop connection
 #define READ(fd, buff, size) {if (read(fd, buff,size) == 0) {std::cout << "Lost connection w/ user\n"; close(fd);return ;}}
 
@@ -18,6 +18,13 @@ Users::Users(std::string name, int socket) : id(socket), _name(name)
 }
 Users::~Users() { }
 
+
+Server&Server::operator=(const Server& rhs){
+	if (this == &rhs)
+		return (*this);
+	else
+	 	return (*(new Server()));
+}
 
 Server::Server() {
 	check = false;
@@ -55,13 +62,13 @@ Server::Server() {
 Server::~Server(){
 	close(sockfd);
 }
-int log_pas(std::string str)
+static bool log_pas(std::string str)
 {
 	std::string line;
 	std::ifstream in("db");
 	std::string tmp;
 	int i;
-	
+
 	if (in.is_open())
 	{
 		while (getline(in, line))
@@ -71,14 +78,14 @@ int log_pas(std::string str)
 			while (line[++i] != ':')
 				tmp += line[i];
 			if (str == tmp)
-				return (0);
+				return (false);
 		}
 	}
 	in.close();
-	return (1);
+	return (true);
 }
 
-int log_in(std::string name, std::string pass)
+static bool log_in(const std::string name, const std::string pass)
 {
 	std::string line;
 	std::ifstream in("db");
@@ -94,11 +101,11 @@ int log_in(std::string name, std::string pass)
 			while (line[++i] != ':')
 				tmp += line[i];
 			if (name == tmp && pass == &line[i + 1])
-				return (1);
+				return (true);
 		}
 	}
 	in.close();
-	return (0);
+	return (false);
 }
 
 
@@ -112,7 +119,7 @@ void Server::add_client(std::string name, std::string pass)
 
 void Server::log_in_client(int sock)
 {
-	char buff[1024];
+	char buff[BUFFSIZE];
 	std::string name;
 	std::string pass;
 	bool tick = true;
@@ -120,13 +127,13 @@ void Server::log_in_client(int sock)
 	write(sock, "[1002]", sizeof("[1002]")); //ID log_in room on client side
 	while (tick)
 	{
-		bzero(buff, 1024);
-		READ(sock, buff, 1024);
+		bzero(buff, BUFFSIZE);
+		READ(sock, buff, BUFFSIZE);
 		name = buff;
 
 
-		bzero(buff, 1024);
-		READ(sock, buff, 1024);
+		bzero(buff, BUFFSIZE);
+		READ(sock, buff, BUFFSIZE);
 		pass = buff;
 
 
@@ -164,7 +171,7 @@ void Server::log_in_client(int sock)
 
 void Server::register_client(int sock){
 
-	char buff[1024];
+	char buff[BUFFSIZE];
 	std::string name;
 	std::string pass;
 	bool success = true;
@@ -173,14 +180,14 @@ void Server::register_client(int sock){
 	while (success)
 	{
 		//name
-		READ(sock, buff, 1024);
+		memset(buff, '\0', BUFFSIZE);
+		READ(sock, buff, BUFFSIZE);
 		name = buff;
 		if (log_pas(name)) //Check for unique name
 		{
 			write(sock, "[1]", sizeof("[1]"));
-
-
-			READ(sock, buff, 1024);
+			memset(buff, '\0', BUFFSIZE);
+			READ(sock, buff, BUFFSIZE);
 			pass = buff;
 			add_client(name, pass); //Creating client
 			success = false;
@@ -205,21 +212,21 @@ void Server::send_to_other(Users *user, std::string str){
 void Server::check_user(Users *user)
 {
 	int activity;
-	char buffer[1024];
+	char buffer[BUFFSIZE];
 	std::string tmp;
 	std::vector<Users *>::iterator it;
 
-	bzero(buffer, 1024);
+	bzero(buffer, BUFFSIZE);
 	for (;;)
 	{
-		while ((activity = read(user->id , buffer, 1024)) != 0)
+		while ((activity = read(user->id , buffer, BUFFSIZE)) != 0)
 		{
 			tmp.clear();
 			tmp += "<@" + user->_name + "> ";
 			tmp += buffer;
 			std::cout << tmp << std::endl;
 			send_to_other(user, tmp);
-			bzero(buffer, 1024);
+			bzero(buffer, BUFFSIZE);
 		}
 		for (it = connected.begin(); *it != user; ++it) {
 		}
@@ -265,22 +272,17 @@ void Server::start_server()
 			test.detach();
 			check = false;
 		}
-		else
-		{
-			//Probobly create one more thread for write in server;
-		}
 	}
 }
 
-
 void Server::welcome_window(int connfd)
 {
-	char buff[1024];
+	char buff[BUFFSIZE];
 
 	while (1)
 	{
-		bzero(buff, 1024);
-		READ(connfd, buff, 1024);
+		bzero(buff, BUFFSIZE);
+		READ(connfd, buff, BUFFSIZE);
 		if (buff[0] != '\0')
 		{
 			if (buff[0] == '2' && buff[1] == '\0')

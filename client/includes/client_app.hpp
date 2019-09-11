@@ -11,7 +11,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define MAX 80
 #define PORT 8080
 #define READ(fd, buff, size) {if (read(sockfd, buff, sizeof(buff)) == 0){std::cout << "Lost connection w/ Server\n";exit(EXIT_FAILURE);}}
 #define SA struct sockaddr
@@ -21,7 +20,7 @@ public:
 	Client_app();
 	~Client_app();
 
-	
+	Client_app&operator=(const Client_app& rhs);
 
 	void start_app();
 	void welcome_window();
@@ -34,7 +33,5 @@ public:
 private:
 	int sockfd;
 	struct sockaddr_in servaddr;
-	char buff[1024];
-	std::string where_am_i;
 	std::string output;
 };

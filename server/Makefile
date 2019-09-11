@@ -12,7 +12,7 @@ endif
 
 
 CC := g++
-CFLAGS := -Wall -Wextra -Werror -g3
+CFLAGS := -Wall -Wextra -Werror
 IFLAGS := -I $(CURDIR)/includes/
 
 OBJ_DIR = $(CURDIR)/objects

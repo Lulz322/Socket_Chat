@@ -10,10 +10,10 @@ public:
 	Users();
 	Users(std::string name, int socket);
 	~Users();
+
+
 	int 		id;
 	std::string _name;
-private:
-
 };
 
 #endif
